@@ -21,6 +21,7 @@
                             <th>No</th>
                             <th>Nama Pegawai</th>
                             <th>Email</th>
+                            <th>Username</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
@@ -30,6 +31,7 @@
                                 <td>{{ $loop->iteration }}</td>
                                 <td>{{ $u->pegawai->nama ?? '-' }}</td>
                                 <td>{{ $u->email }}</td>
+                                <td>{{ $u->username }}</td>
                                 <td>
                                     <a href="/user/{{ $u->id }}/edit" class="btn btn-warning btn-sm">Edit</a>
                                     <form action="/user/{{ $u->id }}" method="POST" class="d-inline">

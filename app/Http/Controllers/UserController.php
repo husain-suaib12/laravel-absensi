@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Pegawai;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use App\Models\{Pegawai, User};
 
 class UserController extends Controller
 {
@@ -29,6 +28,7 @@ class UserController extends Controller
         $request->validate([
             'id_pegawai' => 'required|unique:users,id_pegawai',
             'email' => 'required|email|unique:users,email',
+            'username' => 'required',
             'password' => 'required|min:6',
         ]);
 
@@ -36,6 +36,7 @@ class UserController extends Controller
             'id_pegawai' => $request->id_pegawai,
             'name' => Pegawai::find($request->id_pegawai)->nama,
             'email' => $request->email,
+            'username' => $request->username,
             'password' => Hash::make($request->password),
             'role' => 'pegawai',
         ]);
@@ -55,11 +56,12 @@ class UserController extends Controller
         $user = User::findOrFail($id);
 
         $request->validate([
-            'email' => 'required|email|unique:users,email,'.$id,
+            'email' => 'required|email|unique:users,email,' . $id,
         ]);
 
         $data = [
             'email' => $request->email,
+            'username' => $request->username,
         ];
 
         if ($request->password) {

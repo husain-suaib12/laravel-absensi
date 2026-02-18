@@ -97,8 +97,8 @@
                         @csrf
 
                         <div class="form-group position-relative mb-3">
-                            <input type="email" class="form-control form-control-xl" name="email"
-                                placeholder="Email" required>
+                            <input type="text" class="form-control form-control-xl" name="username"
+                                placeholder="Username" required>
                         </div>
 
                         <div class="form-group position-relative mb-4">

@@ -39,6 +39,14 @@
                         {{-- Password Baru --}}
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-semibold">
+                                Username
+                            </label>
+                            <input type="text" name="username" value="{{ old('username', $user->username) }}"
+                                class="form-control rounded-3">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">
                                 Password Baru
                                 <small class="text-muted">(kosongkan jika tidak diganti)</small>
                             </label>

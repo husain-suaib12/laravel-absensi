@@ -16,6 +16,7 @@ class User extends Authenticatable
         'id_pegawai',
         'name',
         'email',
+        'username',
         'password',
         'role',
     ];
