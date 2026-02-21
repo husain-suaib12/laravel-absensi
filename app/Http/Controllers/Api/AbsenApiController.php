@@ -21,25 +21,25 @@ class AbsenApiController extends Controller
      */
     public function absenMasuk(Request $request)
     {
-        $today = Carbon::today();
+        // $today = Carbon::today();
 
-        if ($today->isWeekend()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Hari ini bukan hari kerja.',
-            ]);
-        }
+        // if ($today->isWeekend()) {
+        //     return response()->json([
+        //         'success' => false,
+        //         'message' => 'Hari ini bukan hari kerja.',
+        //     ]);
+        // }
 
-        $libur = MasterHariLibur::where('tanggal', $today->toDateString())
-            ->where('is_active', 1)
-            ->exists();
+        // $libur = MasterHariLibur::where('tanggal', $today->toDateString())
+        //     ->where('is_active', 1)
+        //     ->exists();
 
-        if ($libur) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Hari ini adalah hari libur.',
-            ]);
-        }
+        // if ($libur) {
+        //     return response()->json([
+        //         'success' => false,
+        //         'message' => 'Hari ini adalah hari libur.',
+        //     ]);
+        // }
 
         $request->validate([
             'latitude' => 'required|numeric',
@@ -59,17 +59,17 @@ class AbsenApiController extends Controller
         $tanggalHariIni = Carbon::now()->toDateString();
 
         // CEK HARI LIBUR
-        $hariLibur = DB::table('master_hari_libur')
-            ->where('tanggal', $tanggalHariIni)
-            ->where('is_active', 1)
-            ->exists();
+        // $hariLibur = DB::table('master_hari_libur')
+        //     ->where('tanggal', $tanggalHariIni)
+        //     ->where('is_active', 1)
+        //     ->exists();
 
-        if ($hariLibur) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Hari ini adalah hari libur, tidak perlu absen',
-            ], 403);
-        }
+        // if ($hariLibur) {
+        //     return response()->json([
+        //         'status' => false,
+        //         'message' => 'Hari ini adalah hari libur, tidak perlu absen',
+        //     ], 403);
+        // }
 
         $jamKerja = DB::table('jam_kerja')->first();
         if (! $jamKerja) {
@@ -108,7 +108,7 @@ class AbsenApiController extends Controller
                 'jam_masuk' => Carbon::now()->format('H:i:s'),
                 'latitude' => $request->latitude,
                 'longitude' => $request->longitude,
-                'status' => 'hadir',
+                'id_jenis' => 4, // 4 = hadir
                 'created_at' => now(),
                 'updated_at' => now(),
             ]
@@ -133,16 +133,16 @@ class AbsenApiController extends Controller
             ]);
         }
 
-        $libur = MasterHariLibur::where('tanggal', $today->toDateString())
-            ->where('is_active', 1)
-            ->exists();
+        // $libur = MasterHariLibur::where('tanggal', $today->toDateString())
+        //     ->where('is_active', 1)
+        //     ->exists();
 
-        if ($libur) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Hari ini adalah hari libur.',
-            ]);
-        }
+        // if ($libur) {
+        //     return response()->json([
+        //         'success' => false,
+        //         'message' => 'Hari ini adalah hari libur.',
+        //     ]);
+        // }
 
         $request->validate(['latitude' => 'required|numeric', 'longitude' => 'required|numeric']);
         $user = Auth::user();
@@ -176,30 +176,30 @@ class AbsenApiController extends Controller
         $tanggal = $today->toDateString();
 
         // 🔴 1. CEK SABTU & MINGGU
-        if ($today->isWeekend()) {
-            return response()->json([
-                'status' => true,
-                'data' => [
-                    'status_absensi' => 'LIBUR',
-                    'keterangan' => 'Hari ini bukan hari kerja (Sabtu/Minggu)',
-                ],
-            ]);
-        }
+        // if ($today->isWeekend()) {
+        //     return response()->json([
+        //         'status' => true,
+        //         'data' => [
+        //             'status_absensi' => 'LIBUR',
+        //             'keterangan' => 'Hari ini bukan hari kerja (Sabtu/Minggu)',
+        //         ],
+        //     ]);
+        // }
 
-        // 🔴 2. CEK MASTER HARI LIBUR
-        $libur = MasterHariLibur::where('tanggal', $tanggal)
-            ->where('is_active', 1)
-            ->first();
+        // // 🔴 2. CEK MASTER HARI LIBUR
+        // $libur = MasterHariLibur::where('tanggal', $tanggal)
+        //     ->where('is_active', 1)
+        //     ->first();
 
-        if ($libur) {
-            return response()->json([
-                'status' => true,
-                'data' => [
-                    'status_absensi' => 'LIBUR',
-                    'keterangan' => $libur->keterangan,
-                ],
-            ]);
-        }
+        // if ($libur) {
+        //     return response()->json([
+        //         'status' => true,
+        //         'data' => [
+        //             'status_absensi' => 'LIBUR',
+        //             'keterangan' => $libur->keterangan,
+        //         ],
+        //     ]);
+        // }
 
         $user = Auth::user();
 

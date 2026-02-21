@@ -13,11 +13,11 @@ class AuthApiController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
+            'username' => 'required',
             'password' => 'required',
         ]);
 
-        if (! Auth::attempt($request->only('email', 'password'))) {
+        if (! Auth::attempt($request->only('username', 'password'))) {
             return response()->json([
                 'status' => false,
                 'message' => 'Email atau password salah',
@@ -29,6 +29,7 @@ class AuthApiController extends Controller
         $token = $user->createToken('android-token')->plainTextToken;
 
         return response()->json([
+            'success' => true,
             'status' => true,
             'message' => 'Login berhasil',
             'token' => $token,
@@ -37,6 +38,7 @@ class AuthApiController extends Controller
                 'role' => $user->role,
                 'nama' => optional($user->pegawai)->nama ?? 'User Baru',
                 'email' => $user->email,
+                'username' => $user->username,
                 // Mengirimkan URL foto absolut agar muncul di Flutter
                 'foto' => optional($user->pegawai)->foto ? asset('foto/'.$user->pegawai->foto) : null,
                 'latitude' => optional($user->pegawai->kantor)->latitude ?? 0,

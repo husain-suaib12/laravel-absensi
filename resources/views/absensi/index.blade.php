@@ -111,15 +111,15 @@
                                         <td>{{ $a->jam_masuk ?? '-' }}</td>
                                         <td>{{ $a->jam_pulang ?? '-' }}</td>
                                         <td>
-                                            @if ($a->status === 'hadir')
+                                            @if ($a->id_jenis === 4)
                                                 <span class="badge rounded-pill bg-success px-3">Hadir</span>
-                                            @elseif ($a->status === 'izin')
+                                            @elseif ($a->id_jenis === 2)
                                                 <span class="badge rounded-pill bg-warning text-dark px-3">Izin</span>
-                                            @elseif ($a->status === 'sakit')
+                                            @elseif ($a->id_jenis === 3)
                                                 <span class="badge rounded-pill bg-info px-3">Sakit</span>
-                                            @elseif ($a->status === 'alpa')
+                                            @elseif ($a->id_jenis === 1)
                                                 <span class="badge rounded-pill bg-danger px-3">Alpa</span>
-                                            @elseif ($a->status === 'dinas_luar')
+                                            @elseif ($a->id_jenis === 5)
                                                 <span class="badge rounded-pill bg-primary px-3">
                                                     <i class="bi bi-briefcase-fill me-1"></i> Dinas Luar
                                                 </span>

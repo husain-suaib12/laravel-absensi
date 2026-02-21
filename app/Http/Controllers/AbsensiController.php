@@ -15,9 +15,12 @@ class AbsensiController extends Controller
     {
         $data = DB::table('absensi')
             ->join('pegawai', 'absensi.id_pegawai', '=', 'pegawai.id_pegawai')
+            ->join('jenis_potongan', 'absensi.id_jenis', '=', 'jenis_potongan.id_jenis')
+
             ->select(
                 'absensi.*',
-                'pegawai.nama as nama_pegawai'
+                'pegawai.nama as nama_pegawai',
+                'jenis_potongan.*'
             )
             ->where('absensi.id_absensi', $id_absensi)
             ->first();
@@ -46,22 +49,7 @@ class AbsensiController extends Controller
             ->leftJoin('jenis_potongan', 'absensi.id_jenis', '=', 'jenis_potongan.id_jenis')
             ->select(
                 'absensi.*',
-                'pegawai.nama as nama_pegawai',
-                DB::raw("
-    LOWER(
-        CASE
-            WHEN absensi.status IS NOT NULL
-                THEN absensi.status
-            WHEN jenis_potongan.nama_potongan IS NOT NULL
-                THEN jenis_potongan.nama_potongan
-            WHEN absensi.jam_masuk IS NOT NULL
-                THEN 'hadir'
-            ELSE '-'
-        END
-    ) as status
-")
-
-            );
+                'pegawai.nama as nama_pegawai');
 
         if ($q) {
             $query->where('pegawai.nama', 'like', "%{$q}%");
@@ -101,19 +89,7 @@ class AbsensiController extends Controller
             ->select(
                 'absensi.*',
                 'pegawai.nama as nama_pegawai',
-                DB::raw("
-            LOWER(
-                CASE
-                    WHEN absensi.status IS NOT NULL
-                        THEN absensi.status
-                    WHEN jenis_potongan.nama_potongan IS NOT NULL
-                        THEN jenis_potongan.nama_potongan
-                    WHEN absensi.jam_masuk IS NOT NULL
-                        THEN 'hadir'
-                    ELSE '-'
-                END
-            ) as status
-        ")
+
             );
 
         if ($q) {

@@ -109,6 +109,7 @@ class RekapGajiController extends Controller
                         'bulan' => $bulan,
                     ],
                     [
+                        'gaji_pokok' => $gajiPokok,
                         'hari_kerja' => $hariKerjaEfektif,
                         'jumlah_hadir' => $hadir,
                         'jumlah_alpa' => $alpa,
