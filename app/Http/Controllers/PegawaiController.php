@@ -53,7 +53,7 @@ class PegawaiController extends Controller
         // Upload foto
         if ($request->hasFile('foto')) {
             $file = $request->file('foto');
-            $filename = time().'_'.$file->getClientOriginalName();
+            $filename = time().'_'.$file->getClientOriginalExtension();
             $file->move(public_path('foto'), $filename);
         } else {
             $filename = null;
@@ -107,7 +107,7 @@ class PegawaiController extends Controller
             }
 
             $file = $request->file('foto');
-            $filename = time().'_'.$file->getClientOriginalName();
+            $filename = time().'_'.$file->getClientOriginalExtension();
             $file->move(public_path('foto'), $filename);
 
         } else {

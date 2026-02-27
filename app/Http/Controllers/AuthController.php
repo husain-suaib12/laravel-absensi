@@ -26,7 +26,17 @@ class AuthController extends Controller
         ]);
 
         if (Auth::attempt($credentials)) {
+
             $request->session()->regenerate();
+
+            // CEK ROLE
+            if (Auth::user()->role !== 'admin') {
+                Auth::logout();
+
+                return back()->withErrors([
+                    'username' => 'Akses ditolak. Anda bukan admin.',
+                ]);
+            }
 
             return redirect()->route('welcome');
         }

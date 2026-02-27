@@ -55,6 +55,7 @@
                                     <th class="ps-4">No</th>
                                     <th>Nama Pegawai</th>
                                     <th>Tanggal</th>
+                                    <th>Jam Pengajuan</th>
                                     <th>Jenis Izin</th>
                                     <th>Keterangan</th>
                                     <th>Foto</th>
@@ -68,18 +69,19 @@
                                         <td class="ps-4">{{ $loop->iteration }}</td>
                                         <td class="fw-semibold">{{ $i->nama_pegawai }}</td>
                                         <td>{{ \Carbon\Carbon::parse($i->tanggal)->format('d M Y') }}</td>
+                                        <td>{{ \Carbon\Carbon::parse($i->created_at)->format('H:i') }}</td>
                                         <td>{{ $i->jenis }}</td>
                                         <td>
-                                            {{ $i->keterangan ?? '-' }}
-                                            @if ($i->status_izin == 'ditolak' && $i->alasan_tolak)
+                                            {{ $i->alasan ?? '-' }}
+                                            @if ($i->status_izin == 'ditolak' && $i->alasan)
                                                 <br><small class="text-danger fw-bold">Alasan Tolak:
-                                                    {{ $i->alasan_tolak }}</small>
+                                                    {{ $i->alasan }}</small>
                                             @endif
                                         </td>
                                         <td>
                                             @if ($i->foto)
-                                                <a href="{{ asset('storage/izins/' . $i->foto) }}" target="_blank">
-                                                    <img src="{{ asset('storage/izins/' . $i->foto) }}" alt="Foto Izin"
+                                                <a href="{{ asset('izins/' . $i->foto) }}" target="_blank">
+                                                    <img src="{{ asset('izins/' . $i->foto) }}" alt="Foto Izin"
                                                         style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;">
                                                 </a>
                                             @else

@@ -36,7 +36,6 @@ class RekapGajiController extends Controller
         $hariLibur = DB::table('master_hari_libur')
             ->whereYear('tanggal', $tahun)
             ->whereMonth('tanggal', $bulanAngka)
-            ->where('is_active', 1)
             ->count();
 
         $hariKerjaEfektif = max(0, $hariKerja - $hariLibur);

@@ -82,7 +82,7 @@
                     <h1 class="mb-2">Login</h1>
 
                     <p class="auth-subtitle mb-4">
-                        Masukkan email dan password Anda.
+                        Masukkan Username dan password Anda.
                     </p>
 
                     <!-- Error -->

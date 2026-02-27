@@ -17,15 +17,30 @@ class AuthApiController extends Controller
             'password' => 'required',
         ]);
 
-        if (! Auth::attempt($request->only('username', 'password'))) {
+        if (env('CHECK_FAKE_GPS') == true) {
+            if ($request->is_mocked == true || $request->is_mocked == 1) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Absensi Gagal! Terdeteksi penggunaan Fake GPS.',
+                ], 403);
+            }
+        }
+
+        // 🔥 PROSES LOGIN DULU
+        if (! Auth::attempt([
+            'username' => $request->username,
+            'password' => $request->password,
+        ])) {
             return response()->json([
-                'status' => false,
-                'message' => 'Email atau password salah',
+                'success' => false,
+                'message' => 'Username atau password salah',
             ], 401);
         }
 
-        // Mengambil data user beserta relasi pegawai dan kantor
-        $user = Auth::user()->load(['pegawai.kantor']);
+        // 🔥 AMBIL USER YANG SUDAH LOGIN
+        $user = Auth::user();
+        $user->load(['pegawai.kantor']);
+
         $token = $user->createToken('android-token')->plainTextToken;
 
         return response()->json([
@@ -39,8 +54,9 @@ class AuthApiController extends Controller
                 'nama' => optional($user->pegawai)->nama ?? 'User Baru',
                 'email' => $user->email,
                 'username' => $user->username,
-                // Mengirimkan URL foto absolut agar muncul di Flutter
-                'foto' => optional($user->pegawai)->foto ? asset('foto/'.$user->pegawai->foto) : null,
+                'foto' => optional($user->pegawai)->foto
+                    ? asset('foto/'.$user->pegawai->foto)
+                    : null,
                 'latitude' => optional($user->pegawai->kantor)->latitude ?? 0,
                 'longitude' => optional($user->pegawai->kantor)->longitude ?? 0,
                 'radius' => optional($user->pegawai->kantor)->radius_master ?? 100,

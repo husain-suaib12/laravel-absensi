@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Absensi;
 use App\Models\MasterHariLibur;
 use App\Models\Pegawai;
 use App\Models\RekapGajiBulanan;
@@ -21,29 +20,30 @@ class AbsenApiController extends Controller
      */
     public function absenMasuk(Request $request)
     {
-        // $today = Carbon::today();
+        $today = Carbon::today();
 
-        // if ($today->isWeekend()) {
-        //     return response()->json([
-        //         'success' => false,
-        //         'message' => 'Hari ini bukan hari kerja.',
-        //     ]);
-        // }
+        if ($today->isWeekend()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hari ini bukan hari kerja.',
+            ]);
+        }
 
-        // $libur = MasterHariLibur::where('tanggal', $today->toDateString())
-        //     ->where('is_active', 1)
-        //     ->exists();
+        $libur = MasterHariLibur::where('tanggal', $today->toDateString())
+            ->where('is_active', 1)
+            ->exists();
 
-        // if ($libur) {
-        //     return response()->json([
-        //         'success' => false,
-        //         'message' => 'Hari ini adalah hari libur.',
-        //     ]);
-        // }
+        if ($libur) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hari ini adalah hari libur.',
+            ]);
+        }
 
         $request->validate([
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
+            // 'is_mocked' => 'nullable|boolean',
             'is_mocked' => 'required', // Wajib dikirim oleh Flutter
         ]);
 
@@ -58,32 +58,50 @@ class AbsenApiController extends Controller
         $user = Auth::user();
         $tanggalHariIni = Carbon::now()->toDateString();
 
-        // CEK HARI LIBUR
-        // $hariLibur = DB::table('master_hari_libur')
-        //     ->where('tanggal', $tanggalHariIni)
-        //     ->where('is_active', 1)
-        //     ->exists();
+        // CEK DINAS LUAR
+        $dinasLuar = DB::table('dinas_luar')
+            ->where('id_pegawai', $user->id_pegawai)
+            ->whereDate('tanggal', $tanggalHariIni)
+            ->exists();
 
-        // if ($hariLibur) {
-        //     return response()->json([
-        //         'status' => false,
-        //         'message' => 'Hari ini adalah hari libur, tidak perlu absen',
-        //     ], 403);
-        // }
+        if ($dinasLuar) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Anda sedang dinas luar hari ini',
+            ], 403);
+        }
+
+        // CEK HARI LIBUR
+        $hariLibur = DB::table('master_hari_libur')
+            ->where('tanggal', $tanggalHariIni)
+            ->exists();
+
+        if ($hariLibur) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Hari ini adalah hari libur, tidak perlu absen',
+            ], 403);
+        }
 
         $jamKerja = DB::table('jam_kerja')->first();
         if (! $jamKerja) {
             return response()->json(['status' => false, 'message' => 'Jam kerja belum diatur'], 500);
         }
 
-        $jamSekarang = Carbon::now('Asia/Makassar')->format('H:i');
+        $timezone = 'Asia/Makassar';
 
-        if ($jamSekarang < $jamKerja->jam_masuk_mulai || $jamSekarang > $jamKerja->jam_masuk_selesai) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Absen masuk hanya dapat dilakukan pukul '.substr($jamKerja->jam_masuk_mulai, 0, 5).' - '.substr($jamKerja->jam_masuk_selesai, 0, 5),
-            ], 403);
-        }
+        $jamSekarang = Carbon::now($timezone);
+        $jamMulai = Carbon::createFromFormat('H:i:s', $jamKerja->jam_masuk_mulai, $timezone);
+        $jamSelesai = Carbon::createFromFormat('H:i:s', $jamKerja->jam_masuk_selesai, $timezone);
+
+        // if ($jamSekarang->lt($jamMulai) || $jamSekarang->gt($jamSelesai)) {
+        //     return response()->json([
+        //         'status' => false,
+        //         'message' => 'Absen masuk hanya dapat dilakukan pukul '
+        //             .$jamMulai->format('H:i').' - '
+        //             .$jamSelesai->format('H:i'),
+        //     ], 403);
+        // }
 
         $pegawai = Pegawai::with('kantor')->where('id_pegawai', $user->id_pegawai)->first();
         if (! $pegawai || ! $pegawai->kantor) {
@@ -133,16 +151,15 @@ class AbsenApiController extends Controller
             ]);
         }
 
-        // $libur = MasterHariLibur::where('tanggal', $today->toDateString())
-        //     ->where('is_active', 1)
-        //     ->exists();
+        $libur = MasterHariLibur::where('tanggal', $today->toDateString())
+            ->exists();
 
-        // if ($libur) {
-        //     return response()->json([
-        //         'success' => false,
-        //         'message' => 'Hari ini adalah hari libur.',
-        //     ]);
-        // }
+        if ($libur) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hari ini adalah hari libur.',
+            ]);
+        }
 
         $request->validate(['latitude' => 'required|numeric', 'longitude' => 'required|numeric']);
         $user = Auth::user();
@@ -176,30 +193,29 @@ class AbsenApiController extends Controller
         $tanggal = $today->toDateString();
 
         // 🔴 1. CEK SABTU & MINGGU
-        // if ($today->isWeekend()) {
-        //     return response()->json([
-        //         'status' => true,
-        //         'data' => [
-        //             'status_absensi' => 'LIBUR',
-        //             'keterangan' => 'Hari ini bukan hari kerja (Sabtu/Minggu)',
-        //         ],
-        //     ]);
-        // }
+        if ($today->isWeekend()) {
+            return response()->json([
+                'status' => true,
+                'data' => [
+                    'status_absensi' => 'LIBUR',
+                    'keterangan' => 'Hari ini bukan hari kerja (Sabtu/Minggu)',
+                ],
+            ]);
+        }
 
-        // // 🔴 2. CEK MASTER HARI LIBUR
-        // $libur = MasterHariLibur::where('tanggal', $tanggal)
-        //     ->where('is_active', 1)
-        //     ->first();
+        // 🔴 2. CEK MASTER HARI LIBUR
+        $libur = MasterHariLibur::where('tanggal', $tanggal)
+            ->first();
 
-        // if ($libur) {
-        //     return response()->json([
-        //         'status' => true,
-        //         'data' => [
-        //             'status_absensi' => 'LIBUR',
-        //             'keterangan' => $libur->keterangan,
-        //         ],
-        //     ]);
-        // }
+        if ($libur) {
+            return response()->json([
+                'status' => true,
+                'data' => [
+                    'status_absensi' => 'LIBUR',
+                    'keterangan' => $libur->keterangan,
+                ],
+            ]);
+        }
 
         $user = Auth::user();
 
@@ -210,8 +226,29 @@ class AbsenApiController extends Controller
             ], 404);
         }
 
-        $idPegawai = $user->pegawai->id_pegawai;
+        $idPegawai = $user->id_pegawai;
         $today = Carbon::today()->toDateString();
+
+        // ===============================
+        // 1️⃣ CEK DINAS LUAR HARI INI
+        // ===============================
+        $dinasLuar = DB::table('dinas_luar')
+            ->where('id_pegawai', $idPegawai)
+            ->where('status', 'disetujui')
+            ->where('tanggal_mulai', '<=', $today)
+            ->where('tanggal_selesai', '>=', $today)
+            ->first();
+
+        if ($dinasLuar) {
+            return response()->json([
+                'status' => true,
+                'data' => [
+                    'status_absensi' => 'DINAS LUAR',
+                    'detail' => $dinasLuar->keterangan,
+                    'alasan_tolak' => null,
+                ],
+            ]);
+        }
 
         // ===============================
         // 1️⃣ CEK IZIN HARI INI
@@ -225,26 +262,48 @@ class AbsenApiController extends Controller
             return response()->json([
                 'status' => true,
                 'data' => [
-                    'status_absensi' => ($izin->status_izin === 'pending') ? 'Izin Pending' :
+                    'status_absensi' => ($izin->status_izin === 'pending') ? 'Status Izin Pending' :
                         (($izin->status_izin === 'ditolak') ? 'Izin Ditolak' : strtoupper($izin->jenis)),
                     'alasan_tolak' => $izin->alasan_tolak,
-                    'detail' => $izin->keterangan,
+                    'detail' => $izin->alasan,
                 ],
             ]);
         }
 
-        // ===============================
-        // 2️⃣ CEK ABSENSI HARI INI
-        // ===============================
         $absensi = DB::table('absensi')
             ->where('id_pegawai', $idPegawai)
             ->whereDate('tanggal', $today)
             ->first();
 
         if ($absensi) {
-            $statusTeks = $absensi->jam_pulang
-                ? 'SUDAH ABSEN PULANG'
-                : 'SUDAH ABSEN MASUK';
+
+            switch ($absensi->id_jenis) {
+
+                case 4:
+                    $statusTeks = $absensi->jam_pulang
+                        ? 'SUDAH ABSEN PULANG'
+                        : 'SUDAH ABSEN MASUK';
+                    break;
+
+                case 5:
+                    $statusTeks = 'Dinas Luar';
+                    break;
+
+                case 1:
+                    $statusTeks = 'Alpa';
+                    break;
+
+                case 2:
+                    $statusTeks = 'Sakit';
+                    break;
+
+                case 3:
+                    $statusTeks = 'Izin';
+                    break;
+
+                default:
+                    $statusTeks = 'STATUS TIDAK DIKETAHUI';
+            }
 
             return response()->json([
                 'status' => true,
@@ -256,17 +315,6 @@ class AbsenApiController extends Controller
                 ],
             ]);
         }
-
-        // ===============================
-        // 3️⃣ DEFAULT
-        // ===============================
-        return response()->json([
-            'status' => true,
-            'data' => [
-                'status_absensi' => 'BELUM ABSEN',
-                'alasan_tolak' => null,
-            ],
-        ]);
     }
 
     private function hitungJarak($lat1, $lon1, $lat2, $lon2)

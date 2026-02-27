@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AbsensiController;
 use App\Http\Controllers\Api\AbsenApiController;
 use App\Http\Controllers\Api\AdminIzinApiController;
 use App\Http\Controllers\Api\AuthApiController;
@@ -41,6 +42,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/rekap-bulanan', [AbsenApiController::class, 'getRekapBulanan']);
 
         // Izin & Dinas
+        Route::post('/absensi', [AbsensiController::class, 'store']);
         Route::post('/izin', [IzinApiController::class, 'ajukanIzin']);
         Route::get('/riwayat-izin', [IzinApiController::class, 'riwayatIzin']); // Fitur Baru: Daftar Riwayat Izin
         Route::post('/dinas-luar', [DinasLuarApiController::class, 'ajukan']);

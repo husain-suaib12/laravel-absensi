@@ -14,14 +14,14 @@ class ProsesAbsensiHarian extends Command
 
     public function handle()
     {
-        
+
         $now = Carbon::today();
         $tanggal = $now->toDateString();
 
         // 1. CEK HARI SABTU & MINGGU (WEEKEND)
         // Jika hari ini Sabtu (6) atau Minggu (0), maka hentikan proses
         if ($now->isWeekend()) {
-            $this->info("Hari ini ($tanggal) adalah hari libur (Sabtu/Minggu). Proses Alpa dibatalkan.");
+            $this->info("Hari ini ($tanggal) adalah hari libur. Proses Alpa dibatalkan.");
 
             return;
         }
@@ -29,7 +29,6 @@ class ProsesAbsensiHarian extends Command
         // 2. CEK HARI LIBUR NASIONAL/DESA (Dari Tabel Master Hari Libur)
         $isHariLibur = DB::table('master_hari_libur')
             ->where('tanggal', $tanggal)
-            ->where('is_active', 1)
             ->exists();
 
         if ($isHariLibur) {

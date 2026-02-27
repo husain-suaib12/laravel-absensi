@@ -15,6 +15,6 @@ class MasterHariLibur extends Model
     protected $fillable = [
         'tanggal',
         'keterangan',
-        'is_active',
+        
     ];
 }

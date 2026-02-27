@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller; // ✅ WAJIB ADA
+use App\Http\Controllers\Controller;
 use App\Models\Absensi;
 use App\Models\JenisPotongan;
 use App\Models\Pegawai;
@@ -15,7 +15,7 @@ class RekapGajiApiController extends Controller
     {
         $bulan = $request->bulan; // format: 2026-02
 
-        if (! $bulan) {
+        if (!$bulan) {
             return response()->json([
                 'message' => 'Bulan wajib diisi format YYYY-MM',
             ], 400);
@@ -23,16 +23,24 @@ class RekapGajiApiController extends Controller
 
         $pegawaiList = Pegawai::all();
 
-        // Ambil potongan alfa sekali saja (lebih efisien)
         $potonganAlfa = JenisPotongan::where('id_jenis', 1)->first();
         $nilaiPotonganAlfa = $potonganAlfa ? (int) $potonganAlfa->nilai : 0;
 
         foreach ($pegawaiList as $pegawai) {
 
-            $hadir = Absensi::where('id_pegawai', $pegawai->id_pegawai)
-                ->where('id_jenis', 4)
+            $hadirNormal = Absensi::where('id_pegawai', $pegawai->id_pegawai)
+                ->where('id_jenis', 4) // ID Hadir
                 ->where('tanggal', 'like', $bulan.'%')
                 ->count();
+
+            // ============================================================
+            // BAGIAN YANG DITAMBAHKAN: HITUNG DINAS LUAR (ID 5)
+            // ============================================================
+            $dinasLuar = Absensi::where('id_pegawai', $pegawai->id_pegawai)
+                ->where('id_jenis', 5) // ID Dinas Luar sesuai database
+                ->where('tanggal', 'like', $bulan.'%')
+                ->count();
+            // ============================================================
 
             $izin = Absensi::where('id_pegawai', $pegawai->id_pegawai)
                 ->where('id_jenis', 3)
@@ -49,13 +57,11 @@ class RekapGajiApiController extends Controller
                 ->where('tanggal', 'like', $bulan.'%')
                 ->count();
 
-            // Ambil gaji pokok dari tabel pegawai
             $gajiPokok = (int) $pegawai->gaji_pokok;
 
-            // Hitung total potongan
+            // Potongan tetap hanya dihitung dari status ALFA (ID 1)
             $totalPotongan = $alfa * $nilaiPotonganAlfa;
 
-            // Hitung total gaji akhir
             $totalGaji = $gajiPokok - $totalPotongan;
 
             // Simpan / update rekap
@@ -65,7 +71,11 @@ class RekapGajiApiController extends Controller
                     'bulan' => $bulan,
                 ],
                 [
-                    'hadir' => $hadir,
+                    // ============================================================
+                    // BAGIAN YANG DIUBAH: GABUNGKAN HADIR + DINAS LUAR
+                    // ============================================================
+                    'hadir' => $hadirNormal + $dinasLuar,
+                    // ============================================================
                     'izin' => $izin,
                     'sakit' => $sakit,
                     'alfa' => $alfa,

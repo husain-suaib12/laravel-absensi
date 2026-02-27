@@ -60,7 +60,7 @@ class AdminIzinApiController extends Controller
                     ],
                     [
                         'id_jenis' => $idJenis,
-                        'status' => $statusAbsensi,
+                        'id_jenis' => 3,
                         'jam_masuk' => null,
                         'jam_pulang' => null,
                         'latitude' => 0,

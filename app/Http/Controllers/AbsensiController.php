@@ -2,12 +2,47 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Absensi;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Http\Request;
+use Carbon\Carbon;
+use Illuminate\Http\Request; // pastikan model sudah ada
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class AbsensiController extends Controller
 {
+    public function store(Request $request)
+    {
+        $user = Auth::user(); // pegawai yang login
+        $today = Carbon::today();
+
+        // Cek apakah sudah ada pengajuan di hari ini
+        $sudahAjukan = Absensi::where('id_pegawai', $user->id_pegawai)
+            ->whereDate('tanggal', $today)
+            ->exists();
+
+        if ($sudahAjukan) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda sudah melakukan pengajuan absensi/izin hari ini, tidak bisa mengajukan lagi.',
+            ], 400);
+        }
+
+        // Simpan pengajuan baru
+        $absensi = Absensi::create([
+            'id_pegawai' => $user->id_pegawai,
+            'id_jenis' => $request->id_jenis, // misal 4 = Hadir, 5 = Dinas Luar, dst
+            'tanggal' => $today,
+            'keterangan' => $request->keterangan ?? null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pengajuan absensi berhasil',
+            'data' => $absensi,
+        ]);
+    }
+
     // ===============================
     // DETAIL ABSENSI
     // ===============================

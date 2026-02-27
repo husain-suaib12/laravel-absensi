@@ -10,6 +10,8 @@ class LokasiKantor extends Model
 
     protected $primaryKey = 'id_lokasi';
 
+    protected $keyType = 'int';
+
     protected $fillable = [
         'nama_lokasi',
         'latitude',

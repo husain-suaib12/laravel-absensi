@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\MasterHariLibur;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,26 +14,14 @@ class IzinApiController extends Controller
     {
         $request->validate([
             'tanggal' => 'required|date',
-            'jenis' => 'required|in:Izin,Sakit,izin,sakit',
-            'keterangan' => 'nullable|string',
-            'foto' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'jenis' => 'required',
+            'alasan' => 'nullable|string',
+            'foto' => 'required',
         ]);
 
         $tanggalIzin = Carbon::parse($request->tanggal);
 
-        // ===============================
-        // 1. Tidak boleh tanggal lampau
-        // ===============================
-        if ($tanggalIzin->lt(Carbon::today())) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Tidak bisa mengajukan izin untuk tanggal yang sudah lewat.',
-            ], 422);
-        }
-
-        // ===============================
-        // 2. Cek Hari Kerja (Weekend)
-        // ===============================
+        // 1. Cek Hari Kerja (Weekend)
         if ($tanggalIzin->isWeekend()) {
             return response()->json([
                 'status' => false,
@@ -42,42 +29,52 @@ class IzinApiController extends Controller
             ], 422);
         }
 
-        // ===============================
-        // 3. Cek Hari Libur Nasional
-        // ===============================
-        $libur = MasterHariLibur::where('tanggal', $tanggalIzin->toDateString())
-            ->where('is_active', 1)
-            ->exists();
-
-        if ($libur) {
+        // ============================================================
+        // [AKTIFKAN] VALIDASI TANGGAL LAMPAU
+        // ============================================================
+        if ($tanggalIzin->lt(Carbon::today())) {
             return response()->json([
                 'status' => false,
-                'message' => 'Tanggal yang dipilih adalah hari libur.',
+                'message' => 'Gagal! Tidak bisa mengajukan izin untuk tanggal yang sudah lewat.',
             ], 422);
         }
 
         $user = Auth::user();
 
-        // ===============================
-        // 4. Cek Kuota Maksimal (5 Orang)
-        // ===============================
+        // ============================================================
+        // [SINKRONISASI] CEK APAKAH SUDAH ADA DINAS LUAR (POIN 5)
+        // ============================================================
+        // Mengecek di tabel absensi apakah id_jenis = 5 (Dinas Luar)
+        $cekDinasLuar = DB::table('absensi')
+            ->where('id_pegawai', $user->id_pegawai)
+            ->where('tanggal', $request->tanggal)
+            ->where('id_jenis', 5)
+            ->exists();
+
+        if ($cekDinasLuar) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal! Anda sudah terdaftar Dinas Luar pada tanggal ini.',
+            ], 422);
+        }
+
+        // 2. Cek Kuota Maksimal (3 Orang)
         $jumlahPengajuIzin = DB::table('izin_pegawai')
             ->where('tanggal', $request->tanggal)
             ->count();
 
-        if ($jumlahPengajuIzin >= 5) {
+        if ($jumlahPengajuIzin >= 3) {
             return response()->json([
                 'status' => false,
-                'message' => 'Kuota pengajuan izin untuk tanggal ini sudah penuh (Maksimal 5 orang).',
+                'message' => 'Kuota pengajuan izin untuk tanggal ini sudah penuh (Maksimal 3 orang).',
             ], 422);
         }
 
-        // ===============================
-        // 5. Cek Sudah Absensi
-        // ===============================
+        // 3. Cek Sudah Absensi (Hadir Biasa)
         $cekAbsensi = DB::table('absensi')
             ->where('id_pegawai', $user->id_pegawai)
             ->where('tanggal', $request->tanggal)
+            ->whereNull('id_jenis') // Jika id_jenis null berarti absen hadir biasa
             ->exists();
 
         if ($cekAbsensi) {
@@ -87,9 +84,7 @@ class IzinApiController extends Controller
             ], 422);
         }
 
-        // ===============================
-        // 6. Cek Izin Ganda
-        // ===============================
+        // 4. Cek Izin Ganda
         $cekIzin = DB::table('izin_pegawai')
             ->where('id_pegawai', $user->id_pegawai)
             ->where('tanggal', $request->tanggal)
@@ -102,25 +97,23 @@ class IzinApiController extends Controller
             ], 422);
         }
 
-        // ===============================
-        // 7. Upload Foto (Jika Ada)
-        // ===============================
+        // --- Logika Upload Foto & Simpan Tetap Sama ---
         $namaFoto = null;
-
         if ($request->hasFile('foto')) {
             $file = $request->file('foto');
             $namaFoto = 'izin_'.$user->id_pegawai.'_'.time().'.'.$file->getClientOriginalExtension();
-            $file->storeAs('public/izins', $namaFoto);
+            $tujuanPath = public_path('izins');
+            if (! file_exists($tujuanPath)) {
+                mkdir($tujuanPath, 0777, true);
+            }
+            $file->move($tujuanPath, $namaFoto);
         }
 
-        // ===============================
-        // 8. Simpan ke Database
-        // ===============================
         DB::table('izin_pegawai')->insert([
             'id_pegawai' => $user->id_pegawai,
             'tanggal' => $request->tanggal,
             'jenis' => ucfirst(strtolower($request->jenis)),
-            'keterangan' => $request->keterangan,
+            'alasan' => $request->alasan,
             'foto' => $namaFoto,
             'status_izin' => 'pending',
             'created_at' => now(),
@@ -133,62 +126,118 @@ class IzinApiController extends Controller
         ], 201);
     }
 
-    public function izinPending()
+    public function riwayatIzin(Request $request)
     {
-        $data = DB::table('izin_pegawai')
-            ->join('pegawai', 'izin_pegawai.id_pegawai', '=', 'pegawai.id_pegawai')
-            ->select(
-                'izin_pegawai.id_izin',
-                'pegawai.nama as nama_pegawai',
-                'izin_pegawai.tanggal',
-                'izin_pegawai.jenis',
-                'izin_pegawai.keterangan',
-                'izin_pegawai.foto',
-                'izin_pegawai.status_izin'
-            )
-            ->where('izin_pegawai.status_izin', 'pending')
-            ->orderBy('izin_pegawai.tanggal', 'desc')
-            ->get();
-
-        return response()->json([
-            'status' => true,
-            'data' => $data,
-        ]);
-    }
-
-    public function riwayatIzin()
-    {
-        $user = Auth::user();
+        $idPegawai = $request->user()->id_pegawai;
 
         $izin = DB::table('izin_pegawai')
+            ->where('id_pegawai', $idPegawai)
             ->select(
                 'id_izin as id',
                 'tanggal',
-                'jenis',
-                'keterangan',
+                'jenis as keterangan',
                 'status_izin as status',
-                'alasan_tolak'
+                DB::raw('NULL as alasan_tolak'),
+                DB::raw("'IZIN' as tipe"),
+                'created_at'
             )
-            ->where('id_pegawai', $user->id_pegawai);
+            ->get();
 
         $dinas = DB::table('dinas_luar')
+            ->where('id_pegawai', $idPegawai)
             ->select(
                 'id_dinas_luar as id',
                 'tanggal_mulai as tanggal',
-                DB::raw("'Dinas Luar' as jenis"),
+                'tanggal_selesai as tanggal',
                 'keterangan',
-                DB::raw("'disetujui' as status"),
-                DB::raw('NULL as alasan_tolak')
+                'status',
+                DB::raw('NULL as alasan_tolak'),
+                DB::raw("'DINAS' as tipe"),
+                'created_at'
             )
-            ->where('id_pegawai', $user->id_pegawai);
-
-        $riwayat = $izin->unionAll($dinas)
-            ->orderBy('tanggal', 'desc')
             ->get();
+
+        $riwayat = $izin
+            ->merge($dinas)
+            ->sortByDesc('created_at')
+            ->values();
 
         return response()->json([
             'status' => true,
             'data' => $riwayat,
         ]);
     }
+
+    // public function riwayatIzin()
+    // {
+    //     $user = Auth::user();
+
+    //     $izin = DB::table('izin_pegawai')
+    //         ->select(
+    //             'id_izin as id',
+    //             'tanggal',
+    //             'jenis',
+    //             'alasan',
+    //             'status_izin as status',
+    //             'alasan_tolak'
+    //         )
+    //         ->where('id_pegawai', $user->id_pegawai)->get();
+
+    //     $dinas = DB::table('dinas_luar')
+    //         ->select(
+    //             'id_dinas_luar as id',
+    //             'tanggal_mulai as tanggal',
+    //             DB::raw("'Dinas Luar' as jenis"),
+    //             'alasan',
+    //             DB::raw("'disetujui' as status"),
+    //             DB::raw('NULL as alasan_tolak')
+    //         )
+    //         ->where('id_pegawai', $user->id_pegawai);
+
+    //     $riwayat = $izin->unionAll($dinas)
+    //         ->orderBy('tanggal', 'desc')
+    //         ->get();
+
+    //     return response()->json([
+    //         'status' => true,
+    //         'data' => $izin,
+    //     ]);
+    // }
+
+    // public function riwayatIzin(Request $request)
+    // {
+    //     $idPegawai = $request->user()->id_pegawai;
+
+    //     $izin = DB::table('izin_pegawai')
+    //         ->where('id_pegawai', $idPegawai)
+    //         ->select(
+    //             'id_izin as id',
+    //             'tanggal_mulai as tanggal',
+    //             'jenis_izin as keterangan',
+    //             'status',
+    //             'alasan_tolak',
+    //             DB::raw("'IZIN' as tipe")
+    //         );
+
+    //     $dinas = DB::table('dinas_luar')
+    //         ->where('id_pegawai', $idPegawai)
+    //         ->select(
+    //             'id_dinas as id',
+    //             'tanggal as tanggal',
+    //             DB::raw("'Dinas Luar' as keterangan"),
+    //             'status',
+    //             DB::raw('NULL as alasan_tolak'),
+    //             DB::raw("'DINAS' as tipe")
+    //         );
+
+    //     $riwayat = $izin
+    //         ->unionAll($dinas)
+    //         ->orderBy('tanggal', 'desc')
+    //         ->get();
+
+    //     return response()->json([
+    //         'status' => true,
+    //         'data' => $riwayat,
+    //     ]);
+    // }
 }
